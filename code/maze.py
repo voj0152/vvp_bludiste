@@ -134,11 +134,12 @@ class Maze:
         visited = [False] * incident_matrix.shape[0]
         visited[start_node] = True
         queue = [start_node]
+        non_zero = [i for i, line in enumerate(incident_matrix) if np.any(line)]
         while queue:
             current = queue.pop(0)
             if current == end_node:
                 return True
-            for i in range(incident_matrix.shape[0]):
+            for i in non_zero:
                 if not visited[i] and incident_matrix[current, i]:
                     visited[i] = True
                     queue.append(i)
