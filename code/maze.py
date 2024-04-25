@@ -20,7 +20,7 @@ class Maze:
         maze = np.loadtxt(file_name, delimiter=",", dtype=bool)
         return maze
 
-    def generate_temple(self, size: int, mode: Literal['empty', 'slalom', 'ess'] = "empty") -> np.ndarray:
+    def generate_temple(self, size: int, mode: Literal['empty', 'slalom',  'ess'] = "empty") -> np.ndarray:
         """
         This method generates maze templete with given size and mode.
         There are three modes: empty, slalom, ess.
