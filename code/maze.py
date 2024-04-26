@@ -20,7 +20,7 @@ class Maze:
         maze = np.loadtxt(file_name, delimiter=",", dtype=bool)
         return maze
 
-    def generate_temple(self, size: int, mode: Literal['empty', 'slalom',  'ess'] = "empty") -> np.ndarray:
+    def generate_temple(self, size: int, mode: Literal['empty', 'slalom',  'ess', 'essthin'] = "empty") -> np.ndarray:
         """
         This method generates maze templete with given size and mode.
         There are three modes: empty, slalom, ess.
@@ -40,6 +40,10 @@ class Maze:
                 maze[i, :fifth*4] = 1
             for i in range(3*fifth, 4*fifth):
                 maze[i, fifth:size] = 1
+        elif mode == "essthin":
+            third = size//3
+            maze[third, :size-1] = 1
+            maze[2*third, 1:size] = 1
         return maze
 
     def generate_maze(self, maze: np.ndarray, iter_num: int = 10) -> np.ndarray:
@@ -52,30 +56,27 @@ class Maze:
         incident_matrix = self.incident(maze)
         non_solvable = 0
         height, width = maze.shape
-        while non_solvable < iter_num:
-            num = random.randint(1, width**2 - 2)
+        cor, path = self.shortest_check(incident_matrix)
+        numbers = np.random.choice(range(1, width**2), width**2 - 1, replace=False)
+        i = 0
+        while non_solvable < iter_num and i < width**2 - 1:
+            num = numbers[i]
             row = num // width
             column = num % width
-            incident_row = row * width + column
-            incident_matrix_row_copy = incident_matrix[incident_row, :].copy()
-            incident_matrix_column_copy = incident_matrix[:, incident_row].copy(
-            )
-            incident_matrix[incident_row, :] = 0
-            incident_matrix[:, incident_row] = 0
-            if row != 0 and not maze[row-1, column]:
-                incident_column = (row - 1) * width + column
-                incident_matrix[incident_row, incident_column] = 0
-                incident_matrix[incident_column, incident_row] = 0
-            if column != 0 and not maze[row, column-1]:
-                incident_column = row * width + column - 1
-                incident_matrix[incident_row, incident_column] = 0
-                incident_matrix[incident_column, incident_row] = 0
             maze[row, column] = 1
-            if not self.shortest_check(incident_matrix):
-                non_solvable += 1
-                incident_matrix[incident_row, :] = incident_matrix_row_copy
-                incident_matrix[:, incident_row] = incident_matrix_column_copy
-                maze[row, column] = 0
+            incident_matrix_copy = incident_matrix[num, :].copy()
+            incident_matrix[num, :] = 0
+            incident_matrix[:, num] = 0
+            if num in path:
+                cor, path_new = self.shortest_check(incident_matrix)
+                if not cor:
+                    non_solvable += 1
+                    incident_matrix[num, :] = incident_matrix_copy
+                    incident_matrix[:, num] = incident_matrix_copy
+                    maze[row, column] = 0
+                else:
+                    path = path_new
+            i += 1
         return maze
 
     def incident(self, maze: np.ndarray) -> np.ndarray:
@@ -123,7 +124,7 @@ class Maze:
                     list_of_paths.append(path + [i])
         return []
 
-    def shortest_check(self, incident_matrix: np.ndarray, start_node: int = 0, end_node: int | None = None) -> bool:
+    def shortest_check(self, incident_matrix: np.ndarray, start_node: int = 0, end_node: int | None = None) -> tuple[bool, list[int]]:
         """
         This method checks if there is a path from start_node to end_node in the maze.
         It uses BFS algorithm.
@@ -134,16 +135,19 @@ class Maze:
         visited = [False] * incident_matrix.shape[0]
         visited[start_node] = True
         queue = [start_node]
+        list_of_paths = [[start_node]]
         non_zero = [i for i, line in enumerate(incident_matrix) if np.any(line)]
         while queue:
             current = queue.pop(0)
+            path = list_of_paths.pop(0)
             if current == end_node:
-                return True
+                return True, path
             for i in non_zero:
                 if not visited[i] and incident_matrix[current, i]:
                     visited[i] = True
                     queue.append(i)
-        return False
+                    list_of_paths.append(path + [i])
+        return False, []
 
     def add_path_to_maze(self, maze: np.ndarray, path: list[int]) -> np.ndarray:
         """
