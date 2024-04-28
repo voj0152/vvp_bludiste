@@ -128,7 +128,7 @@ class Maze:
         """
         This method checks if there is a path from start_node to end_node in the maze.
         It uses BFS algorithm.
-        If there is a path, it returns True, otherwise False.
+        If there is a path, it returns True and path, otherwise False and empty list.
         """
         if end_node is None:
             end_node = incident_matrix.shape[0] - 1
@@ -187,7 +187,7 @@ class Maze:
         maze = self.add_path_to_maze(maze, path)
         self.plot_maze(maze)
 
-    def solve_maze_generate(self, size: int, mode: Literal['empty', 'slalom', 'ess'], iter_num: int) -> None:
+    def solve_maze_generate(self, size: int, mode: Literal['empty', 'slalom',  'ess', 'essthin'], iter_num: int) -> None:
         """
         This method generates and solves the maze.
         It generates the maze template, creates incident matrix.
