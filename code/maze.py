@@ -6,9 +6,14 @@ from numba import njit
 
 
 @njit
-def shortest_check(incident_matrix: np.ndarray, start_node: int = 0, end_node: int | None = None) -> bool:
+def shortest_check(
+    incident_matrix: np.ndarray,
+    start_node: int = 0,
+    end_node: int | None = None
+) -> bool:
     """
-    This method checks if there is a path from start_node to end_node in the maze.
+    This method checks if there is a path
+    from start_node to end_node in the maze.
     It uses BFS algorithm.
     If there is a path, it returns True otherwise False.
     It uses numba to speed up the function.
@@ -49,7 +54,11 @@ class Maze:
         maze = np.loadtxt(file_name, delimiter=",", dtype=bool)
         return maze
 
-    def generate_temple(self, size: int, mode: Literal['empty', 'slalom',  'ess', 'essthin'] = "empty") -> np.ndarray[np.bool_]:
+    def generate_temple(
+        self,
+        size: int,
+        mode: Literal['empty', 'slalom', 'ess', 'essthin'] = "empty"
+    ) -> np.ndarray[np.bool_]:
         """
         This method generates maze templete with given size and mode.
         There are three modes: empty, slalom, ess, essthin.
@@ -75,12 +84,18 @@ class Maze:
             maze[2*third, 1:size] = 1
         return maze
 
-    def generate_maze(self, maze: np.ndarray[np.bool_], iter_num: int | None = None) -> np.ndarray[np.bool_]:
+    def generate_maze(
+        self,
+        maze: np.ndarray[np.bool_],
+        iter_num: int | None = None
+    ) -> np.ndarray[np.bool_]:
         """
         This method generates maze from given template maze.
         It adds random walls to the maze and checks if the maze is solvable.
-        If it is not solvable, it reverses the step adds +1 to non_solvable counter.
-        It continues until non_solvable counter reaches iter_num or until all numbers are tried.
+        If it is not solvable, it reverses the step
+        and adds +1 to non_solvable counter.
+        It continues until non_solvable counter reaches iter_num
+        or until all numbers are tried.
         """
         if iter_num is None:
             iter_num = maze.shape[0]
@@ -127,9 +142,15 @@ class Maze:
                         incident_matrix[incident_column, incident_row] = 1
         return incident_matrix
 
-    def find_shortest_path(self, incident_matrix: np.ndarray[np.bool_], start_node: int = 0, end_node: int | None = None) -> list[int]:
+    def find_shortest_path(
+        self,
+        incident_matrix: np.ndarray[np.int64],
+        start_node: int = 0,
+        end_node: int | None = None
+    ) -> list[int]:
         """
-        This method finds the shortest path from start_node to end_node in the maze.
+        This method finds the shortest path
+        from start_node to end_node in the maze.
         It uses BFS algorithm.
         Shortest path is returned as a list of nodes.
         """
@@ -151,7 +172,11 @@ class Maze:
                     list_of_paths.append(path + [i])
         return []
 
-    def add_path_to_maze(self, maze: np.ndarray[np.bool_], path: list[int]) -> np.ndarray[np.int64]:
+    def add_path_to_maze(
+        self,
+        maze: np.ndarray[np.bool_],
+        path: list[int]
+    ) -> np.ndarray[np.int64]:
         """
         This method adds the shortest path to the maze.
         It returns the maze with the path marked with different value.
@@ -179,7 +204,7 @@ class Maze:
     def solve_maze_file(self, file_name: str) -> None:
         """
         This method solves the maze from the given file.
-        It loads the maze, creates incident matrix. 
+        It loads the maze, creates incident matrix.
         Finds the shortest path and adds it to the maze.
         Finally, it plots the maze.
         It uses the methods defined in the class Maze.
@@ -190,7 +215,12 @@ class Maze:
         maze = self.add_path_to_maze(maze, path)
         self.plot_maze(maze)
 
-    def solve_maze_generate(self, size: int, mode: Literal['empty', 'slalom',  'ess', 'essthin']='empty', iter_num: int | None =None) -> None:
+    def solve_maze_generate(
+        self,
+        size: int,
+        mode: Literal['empty', 'slalom', 'ess', 'essthin'] = 'empty',
+        iter_num: int | None = None
+    ) -> None:
         """
         This method generates and solves the maze.
         It generates the maze template, creates incident matrix.
