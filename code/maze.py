@@ -2,7 +2,36 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap
 from typing import Literal
-import random
+from numba import njit
+
+
+@njit
+def shortest_check(incident_matrix: np.ndarray, start_node: int = 0, end_node: int | None = None) -> bool:
+    """
+    This method checks if there is a path from start_node to end_node in the maze.
+    It uses BFS algorithm.
+    If there is a path, it returns True otherwise False.
+    It uses numba to speed up the function.
+    """
+    if end_node is None:
+        end_node = incident_matrix.shape[0] - 1
+    visited = np.zeros(incident_matrix.shape[0], dtype=np.bool_)
+    visited[start_node] = True
+    queue = np.zeros(incident_matrix.shape[0], dtype=np.int64)
+    queue[0] = start_node
+    queue_start = 0
+    queue_end = 1
+    while queue_start != queue_end:
+        current = queue[queue_start]
+        queue_start += 1
+        if current == end_node:
+            return True
+        for i in range(incident_matrix.shape[0]):
+            if not visited[i] and incident_matrix[current, i]:
+                visited[i] = True
+                queue[queue_end] = i
+                queue_end += 1
+    return False
 
 
 class Maze:
@@ -13,17 +42,17 @@ class Maze:
     def __init__(self):
         pass
 
-    def load_maze(self, file_name: str) -> np.ndarray:
+    def load_maze(self, file_name: str) -> np.ndarray[np.bool_]:
         """
         This method loads a maze from a file stored in nd.array.
         """
         maze = np.loadtxt(file_name, delimiter=",", dtype=bool)
         return maze
 
-    def generate_temple(self, size: int, mode: Literal['empty', 'slalom',  'ess', 'essthin'] = "empty") -> np.ndarray:
+    def generate_temple(self, size: int, mode: Literal['empty', 'slalom',  'ess', 'essthin'] = "empty") -> np.ndarray[np.bool_]:
         """
         This method generates maze templete with given size and mode.
-        There are three modes: empty, slalom, ess.
+        There are three modes: empty, slalom, ess, essthin.
         """
         maze = np.zeros((size, size), dtype=bool)
         if mode == "empty":
@@ -46,18 +75,20 @@ class Maze:
             maze[2*third, 1:size] = 1
         return maze
 
-    def generate_maze(self, maze: np.ndarray, iter_num: int = 10) -> np.ndarray:
+    def generate_maze(self, maze: np.ndarray[np.bool_], iter_num: int | None = None) -> np.ndarray[np.bool_]:
         """
         This method generates maze from given template maze.
         It adds random walls to the maze and checks if the maze is solvable.
         If it is not solvable, it reverses the step adds +1 to non_solvable counter.
-        It continues until non_solvable counter reaches iter_num.
+        It continues until non_solvable counter reaches iter_num or until all numbers are tried.
         """
+        if iter_num is None:
+            iter_num = maze.shape[0]
         incident_matrix = self.incident(maze)
         non_solvable = 0
         height, width = maze.shape
-        cor, path = self.shortest_check(incident_matrix)
-        numbers = np.random.choice(range(1, width**2), width**2 - 1, replace=False)
+        numbers = np.random.choice(
+            range(1, width**2), width**2 - 1, replace=False)
         i = 0
         while non_solvable < iter_num and i < width**2 - 1:
             num = numbers[i]
@@ -67,19 +98,15 @@ class Maze:
             incident_matrix_copy = incident_matrix[num, :].copy()
             incident_matrix[num, :] = 0
             incident_matrix[:, num] = 0
-            if num in path:
-                cor, path_new = self.shortest_check(incident_matrix)
-                if not cor:
-                    non_solvable += 1
-                    incident_matrix[num, :] = incident_matrix_copy
-                    incident_matrix[:, num] = incident_matrix_copy
-                    maze[row, column] = 0
-                else:
-                    path = path_new
+            if not shortest_check(incident_matrix):
+                non_solvable += 1
+                incident_matrix[num, :] = incident_matrix_copy
+                incident_matrix[:, num] = incident_matrix_copy
+                maze[row, column] = 0
             i += 1
         return maze
 
-    def incident(self, maze: np.ndarray) -> np.ndarray:
+    def incident(self, maze: np.ndarray[np.bool_]) -> np.ndarray[np.int64]:
         """
         This method creates incident matrix from given maze.
         It creates a graph from the maze and returns its incident matrix.
@@ -100,7 +127,7 @@ class Maze:
                         incident_matrix[incident_column, incident_row] = 1
         return incident_matrix
 
-    def find_shortest_path(self, incident_matrix: np.ndarray, start_node: int = 0, end_node: int | None = None) -> list[int]:
+    def find_shortest_path(self, incident_matrix: np.ndarray[np.bool_], start_node: int = 0, end_node: int | None = None) -> list[int]:
         """
         This method finds the shortest path from start_node to end_node in the maze.
         It uses BFS algorithm.
@@ -124,32 +151,7 @@ class Maze:
                     list_of_paths.append(path + [i])
         return []
 
-    def shortest_check(self, incident_matrix: np.ndarray, start_node: int = 0, end_node: int | None = None) -> tuple[bool, list[int]]:
-        """
-        This method checks if there is a path from start_node to end_node in the maze.
-        It uses BFS algorithm.
-        If there is a path, it returns True and path, otherwise False and empty list.
-        """
-        if end_node is None:
-            end_node = incident_matrix.shape[0] - 1
-        visited = [False] * incident_matrix.shape[0]
-        visited[start_node] = True
-        queue = [start_node]
-        list_of_paths = [[start_node]]
-        non_zero = [i for i, line in enumerate(incident_matrix) if np.any(line)]
-        while queue:
-            current = queue.pop(0)
-            path = list_of_paths.pop(0)
-            if current == end_node:
-                return True, path
-            for i in non_zero:
-                if not visited[i] and incident_matrix[current, i]:
-                    visited[i] = True
-                    queue.append(i)
-                    list_of_paths.append(path + [i])
-        return False, []
-
-    def add_path_to_maze(self, maze: np.ndarray, path: list[int]) -> np.ndarray:
+    def add_path_to_maze(self, maze: np.ndarray[np.bool_], path: list[int]) -> np.ndarray[np.int64]:
         """
         This method adds the shortest path to the maze.
         It returns the maze with the path marked with different value.
@@ -162,13 +164,14 @@ class Maze:
             maze[row, column] = 2
         return maze
 
-    def plot_maze(self, maze: np.ndarray) -> None:
+    def plot_maze(self, maze: np.ndarray[np.int64]) -> None:
         """
         This method plots the maze using the matplotlib.
         It uses white color for empty space,
         black for walls and red for the path.
         Axis are turned off.
         """
+        plt.figure(facecolor='black')
         plt.imshow(maze, cmap=ListedColormap(['white', 'black', 'red']))
         plt.axis('off')
         plt.show()
@@ -187,7 +190,7 @@ class Maze:
         maze = self.add_path_to_maze(maze, path)
         self.plot_maze(maze)
 
-    def solve_maze_generate(self, size: int, mode: Literal['empty', 'slalom',  'ess', 'essthin'], iter_num: int) -> None:
+    def solve_maze_generate(self, size: int, mode: Literal['empty', 'slalom',  'ess', 'essthin']='empty', iter_num: int | None =None) -> None:
         """
         This method generates and solves the maze.
         It generates the maze template, creates incident matrix.
