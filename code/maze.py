@@ -2,41 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap
 from typing import Literal
-from numba import njit
-
-
-@njit
-def shortest_check(
-    incident_matrix: np.ndarray,
-    start_node: int = 0,
-    end_node: int | None = None
-) -> bool:
-    """
-    This method checks if there is a path
-    from start_node to end_node in the maze.
-    It uses BFS algorithm.
-    If there is a path, it returns True otherwise False.
-    It uses numba to speed up the function.
-    """
-    if end_node is None:
-        end_node = incident_matrix.shape[0] - 1
-    visited = np.zeros(incident_matrix.shape[0], dtype=np.bool_)
-    visited[start_node] = True
-    queue = np.zeros(incident_matrix.shape[0], dtype=np.int64)
-    queue[0] = start_node
-    queue_start = 0
-    queue_end = 1
-    while queue_start != queue_end:
-        current = queue[queue_start]
-        queue_start += 1
-        if current == end_node:
-            return True
-        for i in range(incident_matrix.shape[0]):
-            if not visited[i] and incident_matrix[current, i]:
-                visited[i] = True
-                queue[queue_end] = i
-                queue_end += 1
-    return False
+from scipy.sparse import csr_matrix
 
 
 class Maze:
@@ -103,31 +69,53 @@ class Maze:
         non_solvable = 0
         height, width = maze.shape
         numbers = np.random.choice(
-            range(1, width**2), width**2 - 1, replace=False)
+            range(1, width**2 - 1), width**2 - 2, replace=False)
         i = 0
-        while non_solvable < iter_num and i < width**2 - 1:
+        while non_solvable < iter_num and i < numbers.size:
             num = numbers[i]
             row = num // width
             column = num % width
             maze[row, column] = 1
-            incident_matrix_copy = incident_matrix[num, :].copy()
-            incident_matrix[num, :] = 0
-            incident_matrix[:, num] = 0
-            if not shortest_check(incident_matrix):
+            incident_og = incident_matrix.copy()
+            indices = np.where(incident_matrix.indices == num)
+            incident_matrix.data[indices] = 0
+            if not self.shortest_check(incident_matrix):
                 non_solvable += 1
-                incident_matrix[num, :] = incident_matrix_copy
-                incident_matrix[:, num] = incident_matrix_copy
+                incident_matrix.data[indices] = incident_og.data[indices]
                 maze[row, column] = 0
             i += 1
         return maze
 
-    def incident(self, maze: np.ndarray[np.bool_]) -> np.ndarray[np.int64]:
+    def shortest_check(
+        self,
+        incident_matrix: csr_matrix,
+        start_node: int = 0,
+        end_node: int | None = None
+    ) -> bool:
+        """
+        This method checks if there is a path
+        from start_node to end_node in the maze.
+        It uses BFS algorithm implemented with matrix multiplication.
+        If there is a path, it returns True otherwise False.
+        """
+        if end_node is None:
+            end_node = incident_matrix.shape[0] - 1
+        size = incident_matrix.shape[0]
+        possible = np.zeros(size, dtype=bool)
+        possible[start_node] = True
+        for i in range(size - 1):
+            possible = incident_matrix.dot(possible)
+            if possible[end_node]:
+                return True
+        return False
+
+    def incident(self, maze: np.ndarray[np.bool_]) -> csr_matrix:
         """
         This method creates incident matrix from given maze.
         It creates a graph from the maze and returns its incident matrix.
         """
         height, width = maze.shape
-        incident_matrix = np.zeros((height*width, height*width))
+        incident_matrix = np.zeros((height*width, height*width), dtype=bool)
         for i in range(height):
             for j in range(width):
                 if not maze[i, j]:
@@ -140,11 +128,11 @@ class Maze:
                         incident_column = i * width + j + 1
                         incident_matrix[incident_row, incident_column] = 1
                         incident_matrix[incident_column, incident_row] = 1
-        return incident_matrix
+        return csr_matrix(incident_matrix)
 
     def find_shortest_path(
         self,
-        incident_matrix: np.ndarray[np.int64],
+        incident_matrix: csr_matrix,
         start_node: int = 0,
         end_node: int | None = None
     ) -> list[int]:
@@ -165,8 +153,10 @@ class Maze:
             path = list_of_paths.pop(0)
             if current == end_node:
                 return path
-            for i in range(incident_matrix.shape[0]):
-                if not visited[i] and incident_matrix[current, i]:
+            start = incident_matrix.indptr[current]
+            end = incident_matrix.indptr[current + 1]
+            for i in incident_matrix.indices[start:end]:
+                if not visited[i]:
                     visited[i] = True
                     queue.append(i)
                     list_of_paths.append(path + [i])
