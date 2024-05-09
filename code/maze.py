@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap
 from typing import Literal
-from scipy.sparse import csr_matrix
+from scipy.sparse import csr_matrix, lil_matrix
 
 
 class Maze:
@@ -115,7 +115,7 @@ class Maze:
         It creates a graph from the maze and returns its incident matrix.
         """
         height, width = maze.shape
-        incident_matrix = np.zeros((height*width, height*width), dtype=bool)
+        incident_matrix = lil_matrix((height*width, height*width), dtype=bool)
         for i in range(height):
             for j in range(width):
                 if not maze[i, j]:
