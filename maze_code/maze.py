@@ -27,7 +27,7 @@ class Maze:
     ) -> np.ndarray[np.bool_]:
         """
         This method generates maze templete with given size and mode.
-        There are three modes: empty, slalom, ess, essthin.
+        There are four modes: empty, slalom, ess, essthin.
         """
         maze = np.zeros((size, size), dtype=bool)
         if mode == "empty":
@@ -76,12 +76,11 @@ class Maze:
             row = num // width
             column = num % width
             maze[row, column] = 1
-            incident_og = incident_matrix.copy()
             indices = np.where(incident_matrix.indices == num)
             incident_matrix.data[indices] = 0
             if not self.shortest_check(incident_matrix):
                 non_solvable += 1
-                incident_matrix.data[indices] = incident_og.data[indices]
+                incident_matrix.data[indices] = 1
                 maze[row, column] = 0
             i += 1
         return maze
@@ -186,6 +185,7 @@ class Maze:
         black for walls and red for the path.
         Axis are turned off.
         """
+        plt.rcParams['figure.figsize'] = [3, 3]
         plt.figure(facecolor='black')
         plt.imshow(maze, cmap=ListedColormap(['white', 'black', 'red']))
         plt.axis('off')
